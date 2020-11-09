@@ -16,8 +16,8 @@ https://www.marktindex.ch/raetsel/binoxxo/
 
 # Initial board status
 #  0: empty
-#  1: O
-#  2: X
+#  1: X
+#  2: O
 board = [
         [0,0,0,1,0,0,0,1,0,0],
         [2,0,2,0,0,2,0,0,2,0],
@@ -33,9 +33,9 @@ board = [
 
 def mark(i):
     if i == 1:
-        return 'x'
+        return 'X'
     elif i == 2:
-        return 'o'
+        return 'O'
     else:
         return ' ';
 
