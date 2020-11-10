@@ -28,84 +28,57 @@ O    OO X
 XO        
 '''[1:-1])
 
-def dump():
+
+def dump(m):
     print '  0 1 2 3 4 5 6 7 8 9'
-    for i in range(len(board)):
-        print i,
-        for j in range(len(board[i])):
-            print board[i][j],
-        print ''
+    for i, l in enumerate(m):
+        print i, ' '.join(l)
     print ''
 
 
-def main():
-    dump()
-    while (True):
-        if (step(sequence, 'sequence')
-                or step(fill5, 'fill5')
-                or step(fill4, 'fill4')
-                or step(middle, 'middle')
-                or step2(compare, 'compare')):
-            continue
-        break
-
-    solved = True
-    for i in range(len(board)):
-        if board[i].count(' ') > 0:
-            solved = False
-    if solved:
-        print 'Solved!'
-    else:
-        print 'Failed to solve'
+def trans(m):
+    for i in range(10):
+        for j in range(i+1, 10):
+            m[i][j], m[j][i] = m[j][i], m[i][j]
 
 
 '''
 Apply the given function to each line and column.
 '''
-def step(f, name):
+def step(m, f, name):
     changed = 0
-    for i in range(len(board)):
-        changed += f(board[i])
 
-    # create row/colum swapped data, and apply the function
-    for c in range(10):
-        l = []
-        for i in range(10):
-            l.append(board[i][c])
+    for l in m:
         changed += f(l)
-        for i in range(10):
-            board[i][c] = l[i]
+    trans(m)
+    for l in m:
+        changed += f(l)
+    trans(m)
 
     if changed:
         print '%s changed=%d' % (name, changed)
-        dump()
+        dump(m)
     return changed
 
 
 '''
 Apply the given function to each line pair and column pair.
 '''
-def step2(f, name):
+def step2(m, f, name):
     changed = 0
-    for i in range(len(board)):
-        for j in range(len(board)):
-            changed += f(board[i], board[j])
 
-    # create row/colum swapped data, and apply the function
-    for c in range(10):
-        for c2 in range(10):
-            l = []
-            L = []
-            for i in range(10):
-                l.append(board[i][c])
-                L.append(board[i][c2])
+    for l in m:
+        for L in m:
             changed += f(l, L)
-            for i in range(10):
-                board[i][c] = l[i]
+    trans(m)
+    for l in m:
+        for L in m:
+            changed += f(l, L)
+    trans(m)
 
     if changed:
         print '%s changed=%d' % (name, changed)
-        dump()
+        dump(m)
     return changed
 
 
@@ -117,17 +90,19 @@ def flip(n):
     else:
         return ' '
 
+
 '''
 Put 'X' between two Os
 e.g. O_O -> OXO
 '''
 def middle(l):
     changed = 0
-    for i in range(len(l) - 2):
+    for i in range(8):
         if l[i+1] == ' ' and l[i] != ' ' and l[i] == l[i+2]:
             l[i+1] = flip(l[i])
             changed += 1
     return changed
+
 
 '''
 Put X next to OO
@@ -135,7 +110,7 @@ e.g. XOO_ -> XOOX
 '''
 def sequence(l):
     changed = 0
-    for i in range(len(l)-2):
+    for i in range(8):
         if l[i] == ' ' and l[i+1] != ' ' and l[i+1] == l[i+2]:
             changed += 1
             l[i] = flip(l[i+1])
@@ -150,26 +125,23 @@ In case five X are already filled, fill O onto the remaining cells.
 '''
 def fill5(l):
     changed = 0
-
-    if l.count('X') == 5:
-        for i in range(len(l)):
-            if l[i] == ' ':
-                changed += 1
-                l[i] = 'O' 
-    if l.count('O') == 5:
-        for i in range(len(l)):
-            if l[i] == ' ':
-                changed += 1
-                l[i] = 'X' 
+    changed += fill5sub(l, 'X')
+    changed += fill5sub(l, 'O')
     return changed
 
-def fill_except(l, v, except1, except2):
+
+def fill5sub(l, x):
     changed = 0
-    for i in range(len(l)):
-        if l[i] == ' ' and i != except1 and i != except2:
-            changed += 1
-            l[i] = v
+    y = flip(x)
+
+    if l.count(x) == 5:
+        for i in range(10):
+            if l[i] == ' ':
+                changed += 1
+                l[i] = y
+
     return changed
+ 
 
 '''
 In case four X are alredy filled, fill O where X must not be filled.
@@ -184,12 +156,13 @@ def fill4(l):
     changed += fill4sub(l, 'O')
     return changed
 
+
 def fill4sub(l, x):
     changed = 0
     y = flip(x)
 
     if l.count(x) == 4 and l.count(y) <= 3:
-        for i in range(len(l)-2):
+        for i in range(8):
             if l[i] == ' ' and l[i+1] == ' ' and l[i+2] == y:
                 changed += fill_except(l, y, i, i+1)
             if l[i] == ' ' and l[i+1] == y and l[i+2] == ' ':
@@ -198,6 +171,16 @@ def fill4sub(l, x):
                 changed += fill_except(l, y, i+1, i+2)
 
     return changed
+
+
+def fill_except(l, v, except1, except2):
+    changed = 0
+    for i in range(10):
+        if l[i] == ' ' and i != except1 and i != except2:
+            changed += 1
+            l[i] = v
+    return changed
+
 
 '''
 In case four X are alreay filled, and there is another fully filled line
@@ -208,36 +191,43 @@ Otherwise, the current line and the line L becomes same, and violates
 the rule 4.
 '''
 def compare(l, L):
-    if l.count(' ') == 0 or L.count(0) > 0:
-        return 0
-
     changed = 0
-    l1, l2 = bucket(l)
-    L1, L2 = bucket(L)
+    if l.count(' ') > 0 and L.count(0) == 0:
+        changed += compare_sub(l, L, 'X')
+        changed += compare_sub(l, L, 'O')
+    return changed
 
-    if len(l1) == 4 and l1.issubset(L1):
-        for i in L1.difference(l1):
+
+def compare_sub(l, L, x):
+    changed = 0
+    y = flip(x)
+
+    lx = set([i for i, v in enumerate(l) if v == x])
+    Lx = set([i for i, v in enumerate(L) if v == x])
+    if len(lx) == 4 and lx.issubset(Lx):
+        for i in Lx.difference(lx):
             if l[i] == ' ':
                 changed += 1
-                l[i] = 'O'
-
-    if len(l2) == 4 and l2.issubset(L2):
-        for i in L2.difference(l2):
-            if l[i] == ' ':
-                changed += 1
-                l[i] = ' '
+                l[i] = y
 
     return changed
 
-def bucket(l):
-    b1 = set()
-    b2 = set()
-    for i in range(len(l)):
-        if l[i] == 'X':
-            b1.add(i)
-        elif l[i] == 'O':
-            b2.add(i)
 
-    return b1, b2
+def main(m):
+    dump(m)
+    while (step(m, sequence, 'sequence')
+            or step(m, fill5, 'fill5')
+            or step(m, fill4, 'fill4')
+            or step(m, middle, 'middle')
+            or step2(m, compare, 'compare')):
+        pass
 
-main()
+    solved = True
+    for l in m:
+        if l.count('O') != 5 or l.count('X') != 5:
+            solved = False
+            break
+
+    print 'Solved!' if solved else 'Failed to solve.'
+
+main(board)
