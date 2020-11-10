@@ -19,16 +19,16 @@ https://www.marktindex.ch/raetsel/binoxxo/
 #  1: X
 #  2: O
 board = [
-        [0,0,0,1,0,0,0,1,0,0],
-        [2,0,2,0,0,2,0,0,2,0],
-        [0,0,2,0,0,0,1,0,0,0],
-        [1,0,0,0,0,2,0,0,0,1],
-        [0,0,0,1,0,0,2,0,0,0],
-        [0,0,0,0,2,0,0,0,0,0],
-        [0,0,1,0,0,0,0,0,0,0],
-        [2,0,0,0,0,0,1,0,1,0],
-        [0,0,0,0,0,2,0,2,0,1],
-        [0,2,0,0,0,0,0,0,0,1],
+        [0,0,0,0,0,0,0,0,0,1],
+        [0,0,1,0,0,0,0,2,0,0],
+        [0,0,0,0,0,0,0,0,0,0],
+        [2,0,1,0,2,2,0,2,0,0],
+        [0,0,2,0,0,0,0,0,0,0],
+        [2,0,0,0,0,2,2,0,1,0],
+        [0,2,0,0,0,0,0,1,0,1],
+        [0,0,1,0,0,1,0,0,0,0],
+        [0,0,2,0,0,1,0,0,2,2],
+        [1,2,0,0,0,0,0,0,0,0],
 ]
 
 def mark(i):
@@ -190,9 +190,9 @@ def fill_except(l, v, except1, except2):
 '''
 In case four X are alredy filled, fill O where X must not be filled.
 
-e.g. __OX_ -> __OXO
-If you put X onto the right most cell, the first three cells become
-OOO, which violates the rule 2.
+Example:
+__OX_ -> __OXO, O__X_ -> O__XO, _O_X_ -> _O_XO
+Otherwise the fist three cells become OOO, which violates the rule 2
 '''
 def fill4(l):
     changed = 0
@@ -212,6 +212,8 @@ def fill4sub(l, x):
         for i in range(len(l)-2):
             if l[i] == 0 and l[i+1] == 0 and l[i+2] == y:
                 changed += fill_except(l, y, i, i+1)
+            if l[i] == 0 and l[i+1] == y and l[i+2] == 0:
+                changed += fill_except(l, y, i, i+2)
             if l[i] == y and l[i+1] == 0 and l[i+2] == 0:
                 changed += fill_except(l, y, i+1, i+2)
 
