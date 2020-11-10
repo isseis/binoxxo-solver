@@ -15,42 +15,26 @@ https://www.marktindex.ch/raetsel/binoxxo/
 '''
 
 # Initial board status
-#  0: empty
-#  1: X
-#  2: O
-board = [
-        [0,0,0,0,0,0,0,0,0,1],
-        [0,0,1,0,0,0,0,2,0,0],
-        [0,0,0,0,0,0,0,0,0,0],
-        [2,0,1,0,2,2,0,2,0,0],
-        [0,0,2,0,0,0,0,0,0,0],
-        [2,0,0,0,0,2,2,0,1,0],
-        [0,2,0,0,0,0,0,1,0,1],
-        [0,0,1,0,0,1,0,0,0,0],
-        [0,0,2,0,0,1,0,0,2,2],
-        [1,2,0,0,0,0,0,0,0,0],
-]
+board = (lambda s : [list(l) for l in s.split('\n')])('''
+         X
+  X    O  
+          
+O X OO O  
+  O       
+O    OO X 
+ O     X X
+  X  X    
+  O  X  OO
+XO        
+'''[1:-1])
 
-def mark(i):
-    if i == 1:
-        return 'X'
-    elif i == 2:
-        return 'O'
-    else:
-        return ' ';
-
-
-def dump1(l):
-    for i in range(len(l)):
-        print mark(l[i]),
-    print ''
-
- 
 def dump():
     print '  0 1 2 3 4 5 6 7 8 9'
     for i in range(len(board)):
         print i,
-        dump1(board[i])
+        for j in range(len(board[i])):
+            print board[i][j],
+        print ''
     print ''
 
 
@@ -67,7 +51,7 @@ def main():
 
     solved = True
     for i in range(len(board)):
-        if board[i].count(0) > 0:
+        if board[i].count(' ') > 0:
             solved = False
     if solved:
         print 'Solved!'
@@ -126,12 +110,12 @@ def step2(f, name):
 
 
 def flip(n):
-    if n == 1:
-        return 2
-    elif n == 2:
-        return 1
+    if n == 'O':
+        return 'X'
+    elif n == 'X':
+        return 'O' 
     else:
-        return 0
+        return ' '
 
 '''
 Put 'X' between two Os
@@ -140,7 +124,7 @@ e.g. O_O -> OXO
 def middle(l):
     changed = 0
     for i in range(len(l) - 2):
-        if l[i+1] == 0 and l[i] != 0 and l[i] == l[i+2]:
+        if l[i+1] == ' ' and l[i] != ' ' and l[i] == l[i+2]:
             l[i+1] = flip(l[i])
             changed += 1
     return changed
@@ -152,10 +136,10 @@ e.g. XOO_ -> XOOX
 def sequence(l):
     changed = 0
     for i in range(len(l)-2):
-        if l[i] == 0 and l[i+1] != 0 and l[i+1] == l[i+2]:
+        if l[i] == ' ' and l[i+1] != ' ' and l[i+1] == l[i+2]:
             changed += 1
             l[i] = flip(l[i+1])
-        if l[i] != 0 and l[i] == l[i+1] and l[i+2] == 0:
+        if l[i] != ' ' and l[i] == l[i+1] and l[i+2] == ' ':
             changed += 1
             l[i+2] = flip(l[i])
     return changed
@@ -167,22 +151,22 @@ In case five X are already filled, fill O onto the remaining cells.
 def fill5(l):
     changed = 0
 
-    if l.count(1) == 5:
+    if l.count('X') == 5:
         for i in range(len(l)):
-            if l[i] == 0:
+            if l[i] == ' ':
                 changed += 1
-                l[i] = 2
-    if l.count(2) == 5:
+                l[i] = 'O' 
+    if l.count('O') == 5:
         for i in range(len(l)):
-            if l[i] == 0:
+            if l[i] == ' ':
                 changed += 1
-                l[i] = 1
+                l[i] = 'X' 
     return changed
 
 def fill_except(l, v, except1, except2):
     changed = 0
     for i in range(len(l)):
-        if l[i] == 0 and i != except1 and i != except2:
+        if l[i] == ' ' and i != except1 and i != except2:
             changed += 1
             l[i] = v
     return changed
@@ -196,12 +180,8 @@ Otherwise the fist three cells become OOO, which violates the rule 2
 '''
 def fill4(l):
     changed = 0
-
-    x = 1
-    y = flip(x)
-
-    changed += fill4sub(l, 1)
-    changed += fill4sub(l, 2)
+    changed += fill4sub(l, 'X')
+    changed += fill4sub(l, 'O')
     return changed
 
 def fill4sub(l, x):
@@ -210,11 +190,11 @@ def fill4sub(l, x):
 
     if l.count(x) == 4 and l.count(y) <= 3:
         for i in range(len(l)-2):
-            if l[i] == 0 and l[i+1] == 0 and l[i+2] == y:
+            if l[i] == ' ' and l[i+1] == ' ' and l[i+2] == y:
                 changed += fill_except(l, y, i, i+1)
-            if l[i] == 0 and l[i+1] == y and l[i+2] == 0:
+            if l[i] == ' ' and l[i+1] == y and l[i+2] == ' ':
                 changed += fill_except(l, y, i, i+2)
-            if l[i] == y and l[i+1] == 0 and l[i+2] == 0:
+            if l[i] == y and l[i+1] == ' ' and l[i+2] == ' ':
                 changed += fill_except(l, y, i+1, i+2)
 
     return changed
@@ -228,7 +208,7 @@ Otherwise, the current line and the line L becomes same, and violates
 the rule 4.
 '''
 def compare(l, L):
-    if l.count(0) == 0 or L.count(0) > 0:
+    if l.count(' ') == 0 or L.count(0) > 0:
         return 0
 
     changed = 0
@@ -237,15 +217,15 @@ def compare(l, L):
 
     if len(l1) == 4 and l1.issubset(L1):
         for i in L1.difference(l1):
-            if l[i] == 0:
+            if l[i] == ' ':
                 changed += 1
-                l[i] = 2
+                l[i] = 'O'
 
     if len(l2) == 4 and l2.issubset(L2):
         for i in L2.difference(l2):
-            if l[i] == 0:
+            if l[i] == ' ':
                 changed += 1
-                l[i] = 1
+                l[i] = ' '
 
     return changed
 
@@ -253,9 +233,9 @@ def bucket(l):
     b1 = set()
     b2 = set()
     for i in range(len(l)):
-        if l[i] == 1:
+        if l[i] == 'X':
             b1.add(i)
-        elif l[i] == 2:
+        elif l[i] == 'O':
             b2.add(i)
 
     return b1, b2
