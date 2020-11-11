@@ -70,20 +70,18 @@ Apply the given function to each row or column.
 def step(m, f, name):
     M = copy.deepcopy(m)
     changed = 0
-    direction = ''
 
-    for l in m:
-        changed += f(l)
-        direction = 'H'
-    if changed == 0:
-        trans(m)
-        for l in m:
-            changed += f(l)
-            direction = 'V'
-        trans(m)
+    for l, L in zip(m, M):
+        changed += f(l, L)
+    trans(m)
+    trans(M)
+    for l, L in zip(m, M):
+        changed += f(l, L)
+    trans(m)
+    trans(M)
 
     if changed:
-        print '%s[%s] changed=%d' % (name, direction, changed)
+        print '%s changed=%d' % (name, changed)
         dump(m, M)
     return changed
 
@@ -94,22 +92,20 @@ Apply the given function to each row pair or column pair.
 def step2(m, f, name):
     M = copy.deepcopy(m)
     changed = 0
-    direction = ''
 
     for l in m:
-        for L in m:
+        for L in M:
             changed += f(l, L)
-            direction = 'H'
-    if changed == 0:
-        trans(m)
-        for l in m:
-            for L in m:
-                changed += f(l, L)
-                direction = 'V'
-        trans(m)
-
+    trans(m)
+    trans(M)
+    for l in m:
+        for L in M:
+            changed += f(l, L)
+    trans(m)
+    trans(M)
+  
     if changed:
-        print '%s[%s] changed=%d' % (name, direction, changed)
+        print '%s changed=%d' % (name, changed)
         dump(m, M)
     return changed
 
@@ -127,8 +123,7 @@ def flip(n):
 Put 'X' between two Os
 e.g. O_O -> OXO
 '''
-def middle(l):
-    L = copy.deepcopy(l)
+def middle(l, L):
     changed = 0
     for i in range(8):
         if L[i+1] == ' ' and L[i] != ' ' and L[i] == L[i+2]:
@@ -141,11 +136,10 @@ def middle(l):
 Put X next to OO
 e.g. XOO_ -> XOOX
 '''
-def sequence(l):
-    L = copy.deepcopy(l)
+def sequence(l, L):
     changed = 0
     for i in range(8):
-        if L[i] == ' ' and L[i+1] != ' ' and L[i+1] == l[i+2]:
+        if L[i] == ' ' and L[i+1] != ' ' and L[i+1] == L[i+2]:
             changed += 1
             l[i] = flip(L[i+1])
         if L[i] != ' ' and L[i] == L[i+1] and L[i+2] == ' ':
@@ -157,20 +151,20 @@ def sequence(l):
 '''
 In case five X are already filled, fill O onto the remaining cells.
 '''
-def fill5(l):
+def fill5(l, L):
     changed = 0
-    changed += fill5sub(l, 'X')
-    changed += fill5sub(l, 'O')
+    changed += fill5sub(l, L, 'X')
+    changed += fill5sub(l, L, 'O')
     return changed
 
 
-def fill5sub(l, x):
+def fill5sub(l, L, x):
     changed = 0
     y = flip(x)
 
-    if l.count(x) == 5:
+    if L.count(x) == 5:
         for i in range(10):
-            if l[i] == ' ':
+            if L[i] == ' ':
                 changed += 1
                 l[i] = y
 
@@ -184,24 +178,24 @@ Example:
 __OX_ -> __OXO, O__X_ -> O__XO, _O_X_ -> _O_XO
 Otherwise the fist three cells become OOO, which violates the rule 2
 '''
-def fill4(l):
+def fill4(l, L):
     changed = 0
-    changed += fill4sub(l, 'X')
-    changed += fill4sub(l, 'O')
+    changed += fill4sub(l, L, 'X')
+    changed += fill4sub(l, L, 'O')
     return changed
 
 
-def fill4sub(l, x):
+def fill4sub(l, L, x):
     changed = 0
     y = flip(x)
 
     if l.count(x) == 4 and l.count(y) <= 3:
         for i in range(8):
-            if l[i] == ' ' and l[i+1] == ' ' and l[i+2] == y:
+            if L[i] == ' ' and L[i+1] == ' ' and L[i+2] == y:
                 changed += fill_except(l, y, i, i+1)
-            if l[i] == ' ' and l[i+1] == y and l[i+2] == ' ':
+            if L[i] == ' ' and L[i+1] == y and L[i+2] == ' ':
                 changed += fill_except(l, y, i, i+2)
-            if l[i] == y and l[i+1] == ' ' and l[i+2] == ' ':
+            if L[i] == y and L[i+1] == ' ' and L[i+2] == ' ':
                 changed += fill_except(l, y, i+1, i+2)
 
     return changed
