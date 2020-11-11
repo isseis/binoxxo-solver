@@ -14,8 +14,11 @@ Rule:
 https://www.marktindex.ch/raetsel/binoxxo/
 '''
 
+import copy
+
 # Initial board status
-board = (lambda s : [list(l) for l in s.split('\n')])('''
+# 10x10, each cell must be eitehr ' ', 'X' or 'O'.
+board = '''
          X
   X    O  
           
@@ -26,13 +29,32 @@ O    OO X
   X  X    
   O  X  OO
 XO        
-'''[1:-1])
+'''[1:-1]
 
 
-def dump(m):
+'''
+Dump the board state.
+
+Args:
+    m: the curretn board state.
+    M: the previous board state.
+
+    In case the previous board state is given, the diff from the previous
+    state to the current state is printed as '*' (empty to O) and '+'
+    (empty to X).
+'''
+def dump(m, M=None):
+    if M == None:
+        M = m
     print '  0 1 2 3 4 5 6 7 8 9'
-    for i, l in enumerate(m):
-        print i, ' '.join(l)
+    for i, (l, L) in enumerate(zip(m, M)):
+        print i,
+        for v, V in zip(l, L):
+            if v == V:
+                print v,
+            else:
+                print '*' if v == 'O' else '+',
+        print ''
     print ''
 
 
@@ -46,6 +68,7 @@ def trans(m):
 Apply the given function to each line and column.
 '''
 def step(m, f, name):
+    M = copy.deepcopy(m)
     changed = 0
 
     for l in m:
@@ -57,7 +80,7 @@ def step(m, f, name):
 
     if changed:
         print '%s changed=%d' % (name, changed)
-        dump(m)
+        dump(m, M)
     return changed
 
 
@@ -65,6 +88,7 @@ def step(m, f, name):
 Apply the given function to each line pair and column pair.
 '''
 def step2(m, f, name):
+    M = copy.deepcopy(m)
     changed = 0
 
     for l in m:
@@ -78,7 +102,7 @@ def step2(m, f, name):
 
     if changed:
         print '%s changed=%d' % (name, changed)
-        dump(m)
+        dump(m, M)
     return changed
 
 
@@ -213,21 +237,36 @@ def compare_sub(l, L, x):
     return changed
 
 
-def main(m):
+def is_solved(m):
+    for l in m:
+        if l.count('O') != 5 or l.count('X') != 5:
+            return False
+    trans(m)
+    for l in m:
+        if l.count('O') != 5 or l.count('X') != 5:
+            return False
+    trans(m)
+    return True
+
+
+def main(b):
+    # "OX\n"
+    # "XO\n"
+    # => [ ['O','X'], ['X','O'] ]
+    m = [list(l) for l in b.split('\n')]
+    print 'initial'
     dump(m)
+
     while (step(m, sequence, 'sequence')
             or step(m, fill5, 'fill5')
-            or step(m, fill4, 'fill4')
             or step(m, middle, 'middle')
+            or step(m, fill4, 'fill4')
             or step2(m, compare, 'compare')):
         pass
 
-    solved = True
-    for l in m:
-        if l.count('O') != 5 or l.count('X') != 5:
-            solved = False
-            break
+    print 'final'
+    dump(m)
+    print 'Solved!' if is_solved(m) else 'Failed to solve.'
 
-    print 'Solved!' if solved else 'Failed to solve.'
 
 main(board)
