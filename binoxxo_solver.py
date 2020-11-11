@@ -65,43 +65,51 @@ def trans(m):
 
 
 '''
-Apply the given function to each line and column.
+Apply the given function to each row or column.
 '''
 def step(m, f, name):
     M = copy.deepcopy(m)
     changed = 0
+    direction = ''
 
     for l in m:
         changed += f(l)
-    trans(m)
-    for l in m:
-        changed += f(l)
-    trans(m)
+        direction = 'H'
+    if changed == 0:
+        trans(m)
+        for l in m:
+            changed += f(l)
+            direction = 'V'
+        trans(m)
 
     if changed:
-        print '%s changed=%d' % (name, changed)
+        print '%s[%s] changed=%d' % (name, direction, changed)
         dump(m, M)
     return changed
 
 
 '''
-Apply the given function to each line pair and column pair.
+Apply the given function to each row pair or column pair.
 '''
 def step2(m, f, name):
     M = copy.deepcopy(m)
     changed = 0
+    direction = ''
 
     for l in m:
         for L in m:
             changed += f(l, L)
-    trans(m)
-    for l in m:
-        for L in m:
-            changed += f(l, L)
-    trans(m)
+            direction = 'H'
+    if changed == 0:
+        trans(m)
+        for l in m:
+            for L in m:
+                changed += f(l, L)
+                direction = 'V'
+        trans(m)
 
     if changed:
-        print '%s changed=%d' % (name, changed)
+        print '%s[%s] changed=%d' % (name, direction, changed)
         dump(m, M)
     return changed
 
@@ -120,10 +128,11 @@ Put 'X' between two Os
 e.g. O_O -> OXO
 '''
 def middle(l):
+    L = copy.deepcopy(l)
     changed = 0
     for i in range(8):
-        if l[i+1] == ' ' and l[i] != ' ' and l[i] == l[i+2]:
-            l[i+1] = flip(l[i])
+        if L[i+1] == ' ' and L[i] != ' ' and L[i] == L[i+2]:
+            l[i+1] = flip(L[i])
             changed += 1
     return changed
 
@@ -133,14 +142,15 @@ Put X next to OO
 e.g. XOO_ -> XOOX
 '''
 def sequence(l):
+    L = copy.deepcopy(l)
     changed = 0
     for i in range(8):
-        if l[i] == ' ' and l[i+1] != ' ' and l[i+1] == l[i+2]:
+        if L[i] == ' ' and L[i+1] != ' ' and L[i+1] == l[i+2]:
             changed += 1
-            l[i] = flip(l[i+1])
-        if l[i] != ' ' and l[i] == l[i+1] and l[i+2] == ' ':
+            l[i] = flip(L[i+1])
+        if L[i] != ' ' and L[i] == L[i+1] and L[i+2] == ' ':
             changed += 1
-            l[i+2] = flip(l[i])
+            l[i+2] = flip(L[i])
     return changed
 
 
@@ -259,8 +269,8 @@ def main(b):
 
     while (step(m, sequence, 'sequence')
             or step(m, fill5, 'fill5')
-            or step(m, middle, 'middle')
             or step(m, fill4, 'fill4')
+            or step(m, middle, 'middle')
             or step2(m, compare, 'compare')):
         pass
 
