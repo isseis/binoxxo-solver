@@ -19,16 +19,16 @@ import sys
 # Initial board status
 # 10x10, each cell must be eitehr ' ', 'X' or 'O'.
 board = '''
-         X
-  X    O  
+O   XO  X 
+ X     X  
+ O        
+X  X  OO  
+X    X  O 
+   O     X
+ O  X     
+X  O    X 
           
-O X OO O  
-  O       
-O    OO X 
- O     X X
-  X  X    
-  O  X  OO
-XO        
+ X O  XX  
 '''[1:-1]
 
 # Show debug output and validation
@@ -184,7 +184,7 @@ def fill5sub(l, x):
 In case four X are alredy filled, fill O where X can not be filled.
 
 Example:
-    __OX_ -> __OXO, O__X_ -> O__XO, _O_X_ -> _O_XO
+    __OX_ -> __OXO, O__X_ -> O__XO, _O_X_ -> _O_XO, ____ -> O__O
     Otherwise the fist three cells become OOO, which violates the rule 2
 '''
 def fill4(l):
@@ -206,11 +206,14 @@ def fill4sub(l, x):
                 changed += fill_except(l, y, i, i+2)
             if l[i] == y and l[i+1] == ' ' and l[i+2] == ' ':
                 changed += fill_except(l, y, i+1, i+2)
+        for i in range(7):
+            if l[i] == ' ' and l[i+1] == ' ' and l[i+2] == ' ' and l[i+3] == ' ':
+                l[i] = l[i+3] = y
 
     return changed
 
 '''
-Fill empty cells by the given value except its index is either e1 or e2.
+Fill empty cells by the given value except its index is neither e1 or e2.
 '''
 def fill_except(l, v, e1, e2):
     changed = 0
