@@ -14,7 +14,7 @@ Rule:
 https://www.marktindex.ch/raetsel/binoxxo/
 '''
 
-import copy
+import sys
 
 # Initial board status
 # 10x10, each cell must be eitehr ' ', 'X' or 'O'.
@@ -31,33 +31,26 @@ O    OO X
 XO        
 '''[1:-1]
 
+# Show debug output and validation
+debug = False
+
 
 '''
 Dump the board state.
 
 Args:
-    m: the curretn board state.
-    M: the previous board state.
-
-    In case the previous board state is given, the diff from the previous
-    state to the current state is printed as '*' (empty to O) and '+'
-    (empty to X).
+    m: Curretn board state.
 '''
-def dump(m, M=None):
-    if M == None:
-        M = m
+def dump(m):
     print '  0 1 2 3 4 5 6 7 8 9'
-    for i, (l, L) in enumerate(zip(m, M)):
-        print i,
-        for v, V in zip(l, L):
-            if v == V:
-                print v,
-            else:
-                print '*' if v == 'O' else '+',
-        print ''
+    for i, l in enumerate(m):
+        print i, ' '.join(l)
     print ''
 
 
+'''
+Transpose the matrix in place.
+'''
 def trans(m):
     for i in range(10):
         for j in range(i+1, 10):
@@ -65,48 +58,60 @@ def trans(m):
 
 
 '''
-Apply the given function to each row or column.
+Apply the given algorithm to each row or column.
+
+Args:
+    m: The current board state.
+    f: Algorighm to compute the next column (row) state from the current column
+       (row) state.
+    name: The readable name of the algorithm 'f'.
+
+Returns:
+    Number of cells modified.
 '''
 def step(m, f, name):
-    M = copy.deepcopy(m)
     changed = 0
 
-    for l, L in zip(m, M):
-        changed += f(l, L)
+    for l in m:
+        changed += f(l)
     trans(m)
-    trans(M)
-    for l, L in zip(m, M):
-        changed += f(l, L)
+    for l in m:
+        changed += f(l)
     trans(m)
-    trans(M)
 
-    if changed:
+    if debug and changed:
         print '%s changed=%d' % (name, changed)
-        dump(m, M)
+        dump(m)
     return changed
 
 
 '''
-Apply the given function to each row pair or column pair.
+Apply the given algorithm to each row or column pair.
+
+Args:
+    m: The current board state.
+    f: Algorighm to compute the next column (row) state from the current column
+       (row) state.
+    name: The readable name of the algorithm 'f'.
+
+Returns:
+    Number of cells modified.
 '''
 def step2(m, f, name):
-    M = copy.deepcopy(m)
     changed = 0
 
-    for l in m:
-        for L in M:
-            changed += f(l, L)
+    for l1 in m:
+        for l2 in m:
+            changed += f(l1, l2)
     trans(m)
-    trans(M)
-    for l in m:
-        for L in M:
-            changed += f(l, L)
+    for l1 in m:
+        for l2 in m:
+            changed += f(l1, l2)
     trans(m)
-    trans(M)
   
-    if changed:
+    if debug and changed:
         print '%s changed=%d' % (name, changed)
-        dump(m, M)
+        dump(m)
     return changed
 
 
@@ -121,50 +126,54 @@ def flip(n):
 
 '''
 Put 'X' between two Os
-e.g. O_O -> OXO
+
+Example:
+    O_O -> OXO
 '''
-def middle(l, L):
+def middle(l):
     changed = 0
     for i in range(8):
-        if L[i+1] == ' ' and L[i] != ' ' and L[i] == L[i+2]:
-            l[i+1] = flip(L[i])
+        if l[i+1] == ' ' and l[i] != ' ' and l[i] == l[i+2]:
+            l[i+1] = flip(l[i])
             changed += 1
     return changed
 
 
 '''
 Put X next to OO
-e.g. XOO_ -> XOOX
+
+Example:
+    XOO_ -> XOOX
 '''
-def sequence(l, L):
+def sequence(l):
     changed = 0
     for i in range(8):
-        if L[i] == ' ' and L[i+1] != ' ' and L[i+1] == L[i+2]:
+        if l[i] == ' ' and l[i+1] != ' ' and l[i+1] == l[i+2]:
             changed += 1
-            l[i] = flip(L[i+1])
-        if L[i] != ' ' and L[i] == L[i+1] and L[i+2] == ' ':
+            l[i] = flip(l[i+1])
+        if l[i] != ' ' and l[i] == l[i+1] and l[i+2] == ' ':
             changed += 1
-            l[i+2] = flip(L[i])
+            l[i+2] = flip(l[i])
     return changed
 
 
 '''
 In case five X are already filled, fill O onto the remaining cells.
 '''
-def fill5(l, L):
+def fill5(l):
     changed = 0
-    changed += fill5sub(l, L, 'X')
-    changed += fill5sub(l, L, 'O')
+    changed += fill5sub(l, 'X')
+    changed += fill5sub(l, 'O')
     return changed
 
 
-def fill5sub(l, L, x):
+def fill5sub(l, x):
     changed = 0
     y = flip(x)
 
-    if L.count(x) == 5:
+    if l.count(x) == 5:
         for i in range(10):
-            if L[i] == ' ':
+            if l[i] == ' ':
                 changed += 1
                 l[i] = y
 
@@ -172,39 +181,41 @@ def fill5sub(l, L, x):
  
 
 '''
-In case four X are alredy filled, fill O where X must not be filled.
+In case four X are alredy filled, fill O where X can not be filled.
 
 Example:
-__OX_ -> __OXO, O__X_ -> O__XO, _O_X_ -> _O_XO
-Otherwise the fist three cells become OOO, which violates the rule 2
+    __OX_ -> __OXO, O__X_ -> O__XO, _O_X_ -> _O_XO
+    Otherwise the fist three cells become OOO, which violates the rule 2
 '''
-def fill4(l, L):
+def fill4(l):
     changed = 0
-    changed += fill4sub(l, L, 'X')
-    changed += fill4sub(l, L, 'O')
+    changed += fill4sub(l, 'X')
+    changed += fill4sub(l, 'O')
     return changed
 
 
-def fill4sub(l, L, x):
+def fill4sub(l, x):
     changed = 0
     y = flip(x)
 
     if l.count(x) == 4 and l.count(y) <= 3:
         for i in range(8):
-            if L[i] == ' ' and L[i+1] == ' ' and L[i+2] == y:
+            if l[i] == ' ' and l[i+1] == ' ' and l[i+2] == y:
                 changed += fill_except(l, y, i, i+1)
-            if L[i] == ' ' and L[i+1] == y and L[i+2] == ' ':
+            if l[i] == ' ' and l[i+1] == y and l[i+2] == ' ':
                 changed += fill_except(l, y, i, i+2)
-            if L[i] == y and L[i+1] == ' ' and L[i+2] == ' ':
+            if l[i] == y and l[i+1] == ' ' and l[i+2] == ' ':
                 changed += fill_except(l, y, i+1, i+2)
 
     return changed
 
-
-def fill_except(l, v, except1, except2):
+'''
+Fill empty cells by the given value except its index is either e1 or e2.
+'''
+def fill_except(l, v, e1, e2):
     changed = 0
     for i in range(10):
-        if l[i] == ' ' and i != except1 and i != except2:
+        if l[i] == ' ' and i != e1 and i != e2:
             changed += 1
             l[i] = v
     return changed
@@ -227,18 +238,12 @@ def compare(l, L):
 
 
 def compare_sub(l, L, x):
-    changed = 0
-    y = flip(x)
-
-    lx = set([i for i, v in enumerate(l) if v == x])
     Lx = set([i for i, v in enumerate(L) if v == x])
-    if len(lx) == 4 and lx.issubset(Lx):
-        for i in Lx.difference(lx):
-            if l[i] == ' ':
-                changed += 1
-                l[i] = y
-
-    return changed
+    lx = set([i for i, v in enumerate(l) if v == x])
+    if len(Lx) == 5 and len(lx) == 4 and lx.issubset(Lx):
+        l[Lx.difference(lx).pop()] = flip(x)
+        return 1
+    return 0
 
 
 def is_solved(m):
@@ -253,6 +258,20 @@ def is_solved(m):
     return True
 
 
+def validate(m):
+    error = False
+    for l in m:
+        if l.count('O') > 5 or l.count('X') > 5:
+            error = True
+    trans(m)
+    for l in m:
+        if l.count('O') > 5 or l.count('X') > 5:
+            error = True
+    trans(m)
+
+    if error:
+        raise RuntimeError
+
 def main(b):
     # "OX\n"
     # "XO\n"
@@ -261,14 +280,18 @@ def main(b):
     print 'initial'
     dump(m)
 
-    while (step(m, sequence, 'sequence')
-            or step(m, fill5, 'fill5')
-            or step(m, fill4, 'fill4')
-            or step(m, middle, 'middle')
-            or step2(m, compare, 'compare')):
-        pass
+    try:
+        while (step(m, sequence, 'sequence')
+                + step(m, fill5, 'fill5')
+                + step(m, fill4, 'fill4')
+                + step(m, middle, 'middle')
+                + step2(m, compare, 'compare')):
+            if debug:
+                validate(m)
+        print 'final'
+    except RuntimeError:
+        print 'error!'
 
-    print 'final'
     dump(m)
     print 'Solved!' if is_solved(m) else 'Failed to solve.'
 
