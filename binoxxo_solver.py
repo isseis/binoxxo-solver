@@ -14,6 +14,7 @@ Rule:
 https://www.marktindex.ch/raetsel/binoxxo/
 '''
 
+import argparse
 import sys
 
 # Initial board status
@@ -34,6 +35,8 @@ board = '''
 # Show debug output and validation
 debug = True
 
+class ValidationError(Exception):
+    pass
 
 '''
 Dump the board state.
@@ -61,6 +64,8 @@ def print_debug(m, name, direction, changed):
     if debug and changed:
         print '%s[%s] changed=%d' % (name, direction, changed)
         dump(m)
+        if not validate(m):
+            raise ValidationError
 
 
 '''
@@ -303,27 +308,42 @@ def validate_line_sub(l, x):
     return True
 
 
-def main(b):
+def solve(m):
+    print 'initial'
+    dump(m)
+
+    try:
+        while (step(m, sequence, 'sequence')
+                or step(m, middle, 'middle')
+                or step2(m, compare, 'compare')
+                or step(m, fill_try, 'fill_try')):
+                pass
+    except ValidationError:
+        print 'Invalid board status.'
+    else:
+        print 'final'
+        dump(m)
+        print 'Solved!' if is_solved(m) else 'Failed to solve.'
+
+
+def main():
+    parser = argparse.ArgumentParser(description='Binoxxo puzzle solver.')
+    parser.add_argument('--infile', type=argparse.FileType('r'))
+    args = parser.parse_args()
+    if args.infile:
+        b = args.infile.read()
+    else:
+        b = board
+
     # "OX\n"
     # "XO\n"
     # => [ ['O','X'], ['X','O'] ]
     m = [list(l) for l in b.split('\n')]
-    print 'initial'
-    dump(m)
+    if not validate(m):
+        print 'Initial board status is invalid: ' + str(m)
+        sys.exit(1)
 
-    while (step(m, sequence, 'sequence')
-            or step(m, middle, 'middle')
-            or step2(m, compare, 'compare')
-            or step(m, fill_try, 'fill_try')):
-        if debug and not validate(m):
-            print 'validation failure!'
-            dump(m)
-            sys.exit(1)
-
-    print 'final'
-    dump(m)
-    print 'Solved!' if is_solved(m) else 'Failed to solve.'
-
+    solve(m)
 
 if __name__ == '__main__':
-    main(board)
+    main()
