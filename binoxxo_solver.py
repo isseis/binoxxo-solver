@@ -14,25 +14,26 @@ Rule:
 https://www.marktindex.ch/raetsel/binoxxo/
 '''
 
+import copy
 import sys
 
 # Initial board status
 # 10x10, each cell must be eitehr ' ', 'X' or 'O'.
 board = '''
-O   XO  X 
- X     X  
+     XX X 
+      X XO
  O        
-X  X  OO  
-X    X  O 
-   O     X
- O  X     
-X  O    X 
-          
- X O  XX  
+ O  XX   X
+       X X
+ X   X    
+        OX
+       X  
+   X      
+    O     
 '''[1:-1]
 
 # Show debug output and validation
-debug = False
+debug = True
 
 
 '''
@@ -84,6 +85,9 @@ def step(m, f, name):
         dump(m)
     return changed
 
+
+def stepx(m, f, name):
+    return step(m, lambda l : f(l, 'O') + f(l, 'X'), name)
 
 '''
 Apply the given algorithm to each row or column pair.
@@ -156,18 +160,10 @@ def sequence(l):
             l[i+2] = flip(l[i])
     return changed
 
-
 '''
 In case five X are already filled, fill O onto the remaining cells.
 '''
-def fill5(l):
-    changed = 0
-    changed += fill5sub(l, 'X')
-    changed += fill5sub(l, 'O')
-    return changed
-
-
-def fill5sub(l, x):
+def fill5(l, x):
     changed = 0
     y = flip(x)
 
@@ -184,45 +180,98 @@ def fill5sub(l, x):
 In case four X are alredy filled, fill O where X can not be filled.
 
 Example:
-    __OX_ -> __OXO, O__X_ -> O__XO, _O_X_ -> _O_XO, ____ -> O__O
+    __OX_ -> __OXO, O__X_ -> O__XO, _O_X_ -> _O_XO, X___X_ -> X___XO
+    ____ -> O__O
     Otherwise the fist three cells become OOO, which violates the rule 2
 '''
-def fill4(l):
-    changed = 0
-    changed += fill4sub(l, 'X')
-    changed += fill4sub(l, 'O')
-    return changed
-
-
-def fill4sub(l, x):
+def fill4(l, x):
     changed = 0
     y = flip(x)
 
     if l.count(x) == 4 and l.count(y) <= 3:
         for i in range(8):
-            if l[i] == ' ' and l[i+1] == ' ' and l[i+2] == y:
+            if l[i:i+3] == [' ', ' ', y]:
                 changed += fill_except(l, y, i, i+1)
-            if l[i] == ' ' and l[i+1] == y and l[i+2] == ' ':
+            if l[i:i+3] == [' ', y, ' ']:
                 changed += fill_except(l, y, i, i+2)
-            if l[i] == y and l[i+1] == ' ' and l[i+2] == ' ':
+            if l[i:i+3] == [y, ' ', ' ']:
                 changed += fill_except(l, y, i+1, i+2)
+            if l[i:i+3] == [' ', ' ', ' ']:
+                changed += fill_except(l, y, i, i+1, i+2)
+
         for i in range(7):
-            if l[i] == ' ' and l[i+1] == ' ' and l[i+2] == ' ' and l[i+3] == ' ':
-                l[i] = l[i+3] = y
+            if l[i:i+4] == [' ', ' ', ' ', ' ']:
+                changed += fill_except(l, y, i+1, i+2)
 
     return changed
 
 '''
 Fill empty cells by the given value except its index is neither e1 or e2.
 '''
-def fill_except(l, v, e1, e2):
+def fill_except(l, v, *e):
     changed = 0
+    s = frozenset(e)
     for i in range(10):
-        if l[i] == ' ' and i != e1 and i != e2:
+        if l[i] == ' ' and i not in s:
             changed += 1
             l[i] = v
     return changed
 
+'''
+Example:
+    X__X__O__X -> XOOX__O__X
+    If we put the forth X between the first two Xs, then only one X remains for
+    __O__, so either the left __ or the right __ will become OOO.
+
+'''
+def fill3_2o2(l, x):
+    if l.count(x) != 3:
+        return 0
+
+    changed = 0
+    y = flip(x)
+    for i in range(5):
+        if l[i:i+5] == [' ', ' ', y, ' ', ' ']:
+            changed = fill_except(l, y, i, i+1, i+3, i+4)
+    return changed
+
+'''
+Example:
+    XO_____OXX -> XO__O__OXX
+    If we put the forth X at the center of empty cells, then only one X remains for
+    O__X__O, so either the left O___ or right __O become OOO.
+'''
+def fill3_5(l, x):
+    if l.count(x) != 3:
+        return 0
+
+    y = flip(x)
+    for i in range(3):
+        if l[i:i+7] == [y, ' ', ' ', ' ', ' ', ' ', y]:
+            l[i+3] = y
+            return 1
+    return 0
+
+'''
+Example:
+    X______OXX -> XO_____OXX
+    If we put the forth X at the left most empty cell, then only one X remains for
+    _____O, which will become OOXOOO or OOOXOO.
+'''
+def fill3_6(l, x):
+    if l.count(x) != 3:
+        return 0
+
+    y = flip(x)
+    for i in range(3):
+        if l[i:i+7] == [y, ' ', ' ', ' ', ' ', ' ', ' ']:
+            l[i+6] = y
+            return 1
+        if l[i:i+7] == [' ', ' ', ' ', ' ', ' ', ' ', y]:
+            l[i] = y
+            return 1
+            
+    return 0
 
 '''
 In case four X are alreay filled, and there is another fully filled line
@@ -244,8 +293,10 @@ def compare_sub(l, L, x):
     Lx = set([i for i, v in enumerate(L) if v == x])
     lx = set([i for i, v in enumerate(l) if v == x])
     if len(Lx) == 5 and len(lx) == 4 and lx.issubset(Lx):
-        l[Lx.difference(lx).pop()] = flip(x)
-        return 1
+        i = Lx.difference(lx).pop()
+        if l[i] == ' ':
+            l[i] = flip(x)
+            return 1
     return 0
 
 
@@ -264,16 +315,20 @@ def is_solved(m):
 def validate(m):
     error = False
     for l in m:
-        if l.count('O') > 5 or l.count('X') > 5:
-            error = True
+        validate_line(l)
     trans(m)
     for l in m:
-        if l.count('O') > 5 or l.count('X') > 5:
-            error = True
+        validate_line(l)
     trans(m)
 
-    if error:
-        raise RuntimeError
+
+def validate_line(l):
+    if l.count('O') > 5 or l.count('X') > 5:
+        return False
+    for i in range(8):
+        if l[i] != ' ' and l[i] == l[i+1] and l[i+1] == l[i+2]:
+            return False
+    return True
 
 def main(b):
     # "OX\n"
@@ -283,18 +338,20 @@ def main(b):
     print 'initial'
     dump(m)
 
-    try:
-        while (step(m, sequence, 'sequence')
-                + step(m, fill5, 'fill5')
-                + step(m, fill4, 'fill4')
-                + step(m, middle, 'middle')
-                + step2(m, compare, 'compare')):
-            if debug:
-                validate(m)
-        print 'final'
-    except RuntimeError:
-        print 'error!'
+    while (step(m, sequence, 'sequence')
+            + step(m, middle, 'middle')
+            + stepx(m, fill5, 'fill5')
+            + stepx(m, fill4, 'fill4')
+            + stepx(m, fill3_2o2, 'fill3_2o2')
+            + stepx(m, fill3_5, 'fill3_5')
+            + stepx(m, fill3_6, 'fill3_6')
+            + step2(m, compare, 'compare')):
+        if debug and validate(m):
+            print 'validation failure!'
+            dump(m)
+            sys.exit(1)
 
+    print 'final'
     dump(m)
     print 'Solved!' if is_solved(m) else 'Failed to solve.'
 
