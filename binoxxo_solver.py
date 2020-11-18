@@ -121,7 +121,7 @@ def step2(m, f, name):
         for l2 in m:
             changedV += f(l1, l2)
     trans(m)
-    print_debug(m, name, 'V', changedH)
+    print_debug(m, name, 'V', changedV)
   
     return changedH + changedV
 
