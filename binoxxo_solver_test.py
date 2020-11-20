@@ -1,7 +1,12 @@
 #! /usr/bin/python
 
+import copy
 import unittest
 import binoxxo_solver
+
+# helper function to create a board status
+def b(*l):
+    return [list(s) for s in l]
 
 class TestBinoxxoSolver(unittest.TestCase):
 
@@ -61,6 +66,28 @@ class TestBinoxxoSolver(unittest.TestCase):
         binoxxo_solver.merge(l, ['X'])
         self.assertEqual(list(' XOX'), l)
 
+    def test_validaet_dup(self):
+        self.assertTrue(binoxxo_solver.validate(b(
+            'OX',
+            'XO')))
+        self.assertFalse(binoxxo_solver.validate(b(
+            'OXOX',
+            'OXOX',
+            'XOXO',
+            'XOXO')))
+
+    def test_validaet_notrans(self):
+        m = [
+                list('OXOX'),
+                list('OXXO'),
+                list('OOXX'),
+                list('XOOX'),
+                ]
+        M = copy.deepcopy(m)
+
+        self.assertFalse(binoxxo_solver.validate(m))
+        self.assertEqual(M, m)
+
     def test_validate_line(self):
         self.assertTrue(binoxxo_solver.validate_line(' OO '))
 
@@ -81,8 +108,19 @@ class TestBinoxxoSolver(unittest.TestCase):
         self.assertFalse(binoxxo_solver.validate_line('XOOO'))
         self.assertFalse(binoxxo_solver.validate_line('OOOO'))
 
+    @staticmethod
+    def _(l):
+        return [list(s) for s in l]
+
+    def test_is_board_derived_empty(self):
+        self.assertTrue(binoxxo_solver.is_board_derived([], []))
+        self.assertTrue(binoxxo_solver.is_board_derived(
+            b('OX', 'XO'),
+            b('O ', 'X ')))
+        self.assertFalse(binoxxo_solver.is_board_derived(
+            b('OX', 'XO'),
+            b('O ', 'O ')))
 
 
 if __name__ == '__main__':
     unittest.main()
-
