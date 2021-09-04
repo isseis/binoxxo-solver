@@ -20,26 +20,26 @@ class TestBinoxxoSolver(unittest.TestCase):
         self.assertEqual(expected_set, actual_set)
 
     def test_genNull(self):
-        self.assertEqual(binoxxo_solver.gen(0,0), [])
+        self.assertEqual(binoxxo_solver.permutations(0,0), [])
 
     def test_genOne(self):
-        self.assertEqualUnordered(binoxxo_solver.gen(1,0), ['X'])
-        self.assertEqualUnordered(binoxxo_solver.gen(0,1), ['O'])
+        self.assertEqualUnordered(binoxxo_solver.permutations(1,0), ['X'])
+        self.assertEqualUnordered(binoxxo_solver.permutations(0,1), ['O'])
 
     def test_gen20(self):
-        self.assertEqualUnordered(binoxxo_solver.gen(2,0), ['XX'])
+        self.assertEqualUnordered(binoxxo_solver.permutations(2,0), ['XX'])
 
     def test_gen02(self):
-        self.assertEqualUnordered(binoxxo_solver.gen(0,2), ['OO'])
+        self.assertEqualUnordered(binoxxo_solver.permutations(0,2), ['OO'])
 
     def test_gen11(self):
-        self.assertEqualUnordered(binoxxo_solver.gen(1,1), ['XO', 'OX'])
+        self.assertEqualUnordered(binoxxo_solver.permutations(1,1), ['XO', 'OX'])
 
     def test_gen21(self):
-        self.assertEqualUnordered(binoxxo_solver.gen(2,1), ['XXO', 'XOX', 'OXX'])
+        self.assertEqualUnordered(binoxxo_solver.permutations(2,1), ['XXO', 'XOX', 'OXX'])
 
     def test_gen22(self):
-        self.assertEqualUnordered(binoxxo_solver.gen(2,2),
+        self.assertEqualUnordered(binoxxo_solver.permutations(2,2),
                 ['XXOO', 'XOXO', 'XOOX', 'OXXO', 'OXOX', 'OOXX'])
 
     def test_merge1(self):
@@ -68,21 +68,42 @@ class TestBinoxxoSolver(unittest.TestCase):
 
     def test_validaet_dup(self):
         self.assertTrue(binoxxo_solver.validate(b(
-            'OX',
-            'XO')))
+            'XOXXOOXOXO',
+            'OXOXOXXOOX',
+            'XOXOXOOXXO',
+            'XOOXOXOOXX',
+            'OXXOXOXXOO',
+            'OOXXOXOXOX',
+            'XXOOXXOOXO',
+            'OXOXOOXOXX',
+            'XOXOXOXXOO',
+            'OXOOXXOXOX')))
         self.assertFalse(binoxxo_solver.validate(b(
-            'OXOX',
-            'OXOX',
-            'XOXO',
-            'XOXO')))
+            'XOXXOOXOXO',
+            'OXOXOXXOOX',
+            'XOXOXOOXXO',
+            'XOOXOXOOXX',
+            'OXXOXOXXOO',
+            'OXOXOOXOXX',   # DUP
+            'X  OXXO  O',
+            'OXOXOOXOXX',   # DUP
+            'XOXOXOXXOO',
+            'OXOOXXOXOX')))
 
-    def test_validaet_notrans(self):
+    def test_validate_notrans(self):
         m = [
-                list('OXOX'),
-                list('OXXO'),
-                list('OOXX'),
-                list('XOOX'),
-                ]
+            list('XOXXOOXOXO'),
+            list('XOOXOXXOOX'),
+            list('XOXOXOOXXO'),
+            list('XOOXOXOOXX'),
+            list('OXXOXOXXOO'),
+            list('OOXXOXOXOX'),
+            list('XXOOXXOOXO'),
+            list('OXOXOOXOXX'),
+            list('XOXOXOXXOO'),
+            list('OXOOXXOXOX'),
+            #     ^four Xs
+            ]
         M = copy.deepcopy(m)
 
         self.assertFalse(binoxxo_solver.validate(m))

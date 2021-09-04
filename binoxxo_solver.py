@@ -1,4 +1,4 @@
-#! /usr/bin/python
+#! /usr/bin/python3
 # -*- coding: utf-8 -*-
 
 '''
@@ -16,6 +16,7 @@ https://www.marktindex.ch/raetsel/binoxxo/
 
 import argparse
 import copy
+import itertools
 import sys
 
 # Initial board status
@@ -39,6 +40,88 @@ debug = True
 class ValidationError(Exception):
     pass
 
+
+'''
+Transpose the matrix in place.
+'''
+def transpose(m):
+    n = len(m)
+    for i in range(n):
+        for j in range(i+1, n):
+            m[i][j], m[j][i] = m[j][i], m[i][j]
+
+
+def noop(*args):
+    pass
+
+
+def all(f, m, make_iter=iter):
+    def _sub(f, m, p):
+        try:
+            p(m)
+            for l in make_iter(m):
+                if not f(l):
+                    return False
+        finally:
+            p(m)
+        return True
+
+    return _sub(f, m, transpose) and _sub(f, m, noop)
+
+
+class Algorithm:
+    '''
+    Create Algorithm instance.
+
+    Args:
+        f: Function which receives a line of the matrix, and modify it to
+            solve the problem. The function shall return the number of cells
+            modified.
+        name: Name of the algorithm. Used in debug message.
+        make_iter: The the function is applied for each row and column of
+            the matrix. You can customize how the iterator is created from
+            the matrix by specifying a custom functionh here. This is applied
+            for the matrix and the transported matrix.
+    '''
+    def __init__(self, f, name, make_iter=iter):
+        self.f = f
+        self.name = name
+        self.make_iter = make_iter
+
+    def _apply(self, m, p):
+        try:
+            p(m)
+            changed = 0
+            for l in self.make_iter(m):
+                changed += self.f(l)
+            return changed
+        finally:
+            p(m)
+
+    '''
+    Apply the algorithm to each column in the matrix.
+
+    Args:
+        m: The current board state.
+        is_trans: Transpose the given matrix when applying the algorithm.
+
+    Returns:
+        Number of cells modified.
+    '''
+    def apply(self, m, is_trans):
+        changed = self._apply(m, transpose if is_trans else noop)
+        if debug and changed:
+            self._print_debug(m, self.name, 'V' if is_trans else 'H', changed)
+        return changed
+
+    @staticmethod
+    def _print_debug(m, name, direction, changed):
+        print('%s[%s] changed=%d' % (name, direction, changed))
+        dump(m)
+        if not validate(m):
+            raise ValidationError
+
+
 '''
 Dump the board state.
 
@@ -46,90 +129,10 @@ Args:
     m: Curretn board state.
 '''
 def dump(m):
-    print '  0 1 2 3 4 5 6 7 8 9'
+    print('  0 1 2 3 4 5 6 7 8 9')
     for i, l in enumerate(m):
-        print i, ' '.join(l)
-    print ''
-
-
-'''
-Transpose the matrix in place.
-'''
-def trans(m):
-    n = len(m)
-    for i in range(n):
-        for j in range(i+1, n):
-            m[i][j], m[j][i] = m[j][i], m[i][j]
-
-
-def print_debug(m, name, direction, changed):
-    if debug and changed:
-        print '%s[%s] changed=%d' % (name, direction, changed)
-        dump(m)
-        if not validate(m):
-            raise ValidationError
-
-
-'''
-Apply the given algorithm to each row or column.
-
-Args:
-    m: The current board state.
-    f: Algorighm to compute the next column (row) state from the current column
-       (row) state.
-    name: The readable name of the algorithm 'f'.
-
-Returns:
-    Number of cells modified.
-'''
-def step(m, f, name):
-    changedH = 0
-    changedV = 0
-
-    for l in m:
-        changedH += f(l)
-    print_debug(m, name, 'H', changedH)
-    try:
-        trans(m)
-        for l in m:
-            changedV += f(l)
-    finally:
-        trans(m)
-    print_debug(m, name, 'V', changedV)
-
-    return changedH + changedV
-
-
-'''
-Apply the given algorithm to each row or column pair.
-
-Args:
-    m: The current board state.
-    f: Algorighm to compute the next column (row) state from the current column
-       (row) state.
-    name: The readable name of the algorithm 'f'.
-
-Returns:
-    Number of cells modified.
-'''
-def step2(m, f, name):
-    changedH = 0
-    changedV = 0
-
-    for l1 in m:
-        for l2 in m:
-            changedH += f(l1, l2)
-    print_debug(m, name, 'H', changedH)
-    try:
-        trans(m)
-        for l1 in m:
-            for l2 in m:
-                changedV += f(l1, l2)
-    finally:
-        trans(m)
-    print_debug(m, name, 'V', changedV)
-  
-    return changedH + changedV
+        print(i, ' '.join(l))
+    print('')
 
 
 def flip(n):
@@ -173,51 +176,51 @@ def sequence(l):
             l[i+2] = flip(l[i])
     return changed
 
+
 '''
-Generates permutation.
+Generates permutations.
 
 Args:
     a: number of 'X' in the result
     b: number of 'O' in the result
+
+Retrurns:
+    Permunations as a list of lists.  For example, permutations(1,2)
+    is as below.
+    [ ['X', 'O', 'O'], ['O', 'X', 'O'], ['O', 'X', 'X'] ]
 '''
-def gen(a, b):
+def permutations(a, b):
     if a == 0 and b == 0:
         return []
     elif a == 0:
-        e = []
-        for i in range(b):
-            e.append('O')
-        return [e]
+        return [['O'] * b]
     elif b == 0:
-        e = []
-        for i in range(a):
-            e.append('X')
-        return [e]
+        return [['X'] * a]
     else:
         r = []
-        for l in gen(a-1, b):
+        for l in permutations(a-1, b):
             r.append(['X'] + l)
-        for l in gen(a, b-1):
+        for l in permutations(a, b-1):
             r.append(['O'] + l)
         return r
-
 
 '''
 Fill characters into empty charcters in the list, and creates a new list.
 
 Args:
-    L: The list containing both empty and non-empty characters. The empty characters
-       will be replaced by characters in the other list.
-    l: The list containing non empty characters to be merged into L. Will be overridden.
-
+    L: The list containing both empty and non-empty characters. The empty
+       characters will be replaced by characters in the other list.
+    l: The list containing non empty characters to be merged into L. Will
+       be overridden.
 Example:
     merge(['O', ' ', ' ', 'X'], ['X', 'O']) -> ['O', 'X', 'O', 'X' ]
 '''
 def merge(L, l):
     if L.count(' ') != len(l):
-        raise RuntimeError('Number of element mismatch. L=' + str(L) + ', l=' + str(l))
-
+        raise RuntimeError('Number of element mismatch. '
+                + 'L=' + str(L) + ', l=' + str(l))
     return [l.pop(0) if E == ' ' else E for E in L]
+
 
 '''
 Generates all possible lines, and see if there is a cell which can only
@@ -232,7 +235,7 @@ def fill_try(l):
     for i in range(len(l)):
         result.append(set())
 
-    for g in gen(5 - l.count('X'), 5 - l.count('O')):
+    for g in permutations(5 - l.count('X'), 5 - l.count('O')):
         merged = merge(l, g)
         if validate_line(merged):
             for i, e in enumerate(merged):
@@ -255,93 +258,58 @@ the current line where the fifth X in L exist.
 Otherwise, the current line and the line L becomes same, and violates
 the rule 4.
 '''
-def compare(l, L):
-    changed = 0
-    if l.count(' ') > 0 and L.count(0) == 0:
-        changed += compare_sub(l, L, 'X')
-        changed += compare_sub(l, L, 'O')
-    return changed
+def compare(i):
+    def _sub(l, L, x):
+        Lx = set([i for i, v in enumerate(L) if v == x])
+        lx = set([i for i, v in enumerate(l) if v == x])
+        if len(Lx) == 5 and len(lx) == 4 and lx.issubset(Lx):
+            i = Lx.difference(lx).pop()
+            if l[i] == ' ':
+                l[i] = flip(x)
+                return 1
+        return 0
 
-
-def compare_sub(l, L, x):
-    Lx = set([i for i, v in enumerate(L) if v == x])
-    lx = set([i for i, v in enumerate(l) if v == x])
-    if len(Lx) == 5 and len(lx) == 4 and lx.issubset(Lx):
-        i = Lx.difference(lx).pop()
-        if l[i] == ' ':
-            l[i] = flip(x)
-            return 1
-    return 0
+    return _sub(i[0], i[1], 'X') + _sub(i[0], i[1], 'O')
 
 
 def is_solved(m):
-    if not validate(m):
-        return False
-
-    for l in m:
-        if l.count('O') != 5 or l.count('X') != 5:
-            return False
-    try:
-        trans(m)
-        for l in m:
-            if l.count('O') != 5 or l.count('X') != 5:
-                return False
-    finally:
-        trans(m)
-    return True
+    return validate(m) and all(
+            lambda l: l.count('O') == l.count('X') and l.count(' ') == 0, m)
 
 
 '''
 Validate the intermediate board status.
 '''
 def validate(m):
-    n = len(m)
-    if n % 2 != 0:
-        return False
-    for l in m:
-        if len(l) != n:
-            return False
-
-    if not validate_sub(m):
-        return False
-    try:
-        trans(m)
-        if not validate_sub(m):
-            return False
-    finally:
-        trans(m)
-    return True
-
-
-def validate_sub(m):
-    n = len(m)
-    for i in range(n):
-        if not validate_line(m[i]):
-            return False
-        for j in range(i+1, n):
+    def _sub(m):
+        for l1, l2 in itertools.combinations(m, 2):
             # Rule 4. Alle Zeilen und alle Spalten sind einzigartig.
-            if m[i].count(' ') <= 1 and m[i] == m[j]:
+            if l1.count(' ') <= 1 and l1 == l2:
                 return False
-    return True
+        return True
+
+    return (len(m) == 10
+            and all(lambda l: len(l) == 10, m)
+            and all(lambda l: validate_line(l), m)
+            and all(lambda l: l[0].count(' ') > 1 or l[0] != l[1],
+                m, lambda m: itertools.combinations(m, 2)))
 
 
 def validate_line(l):
+    def _sub(l):
+        for i in range(len(l) - 2):
+            # Rule 2. Es dürfen nicht mehr als zwei aufeinanderfolgende
+            # X und O in einer Zeile oder Spalte vorkommen.
+            if l[i] != ' ' and l[i] == l[i+1] == l[i+2]:
+                return False
+        return True
+
     return (l.count('O') + l.count('X') + l.count(' ') == len(l)
-        and validate_line_sub(l, 'O')
-        and validate_line_sub(l, 'X'))
-
-
-def validate_line_sub(l, x):
-    # Rule 3. Pro Zeile und Spalte hat es gleich viele X und O.
-    # Note some cells can be empty while solving the puzzle.
-    if l.count(x) > len(l) / 2:
-        return False
-    for i in range(len(l) - 2):
-        # Rule 2. Es dürfen nicht mehr als zwei aufeinanderfolgende
-        # X und O in einer Zeile oder Spalte vorkommen.
-        if l[i] == x and l[i+1] == x and l[i+2] == x:
-            return False
-    return True
+            # Rule 3. Pro Zeile und Spalte hat es gleich viele X und O.
+            # Note some cells can be empty while solving the puzzle.
+            and l.count('O') <= len(l) / 2
+            and l.count('X') <= len(l) / 2
+            and _sub(l))
 
 
 '''
@@ -365,28 +333,38 @@ def is_board_derived(m, M):
 
 
 def solve(m):
-    print 'initial'
+    print('initial')
     dump(m)
 
     M = copy.deepcopy(m)
+
+    algorithms = [
+            Algorithm(sequence, 'sequence'),
+            Algorithm(middle, 'middle'),
+            Algorithm(compare, 'compare',
+                lambda m: itertools.permutations(m, 2)),
+            Algorithm(fill_try, 'fill_try'),
+            ]
     try:
-        while (step(m, sequence, 'sequence')
-                or step(m, middle, 'middle')
-                or step2(m, compare, 'compare')
-                or step(m, fill_try, 'fill_try')):
-                pass
+        while True:
+            for a in algorithms:
+                if a.apply(m, False) > 0 or a.apply(m, True) > 0:
+                    break
+            else:
+                break
     except ValidationError:
-        print 'Failed! Invalid board status.'
+        print('Failed! Invalid board status.')
     else:
-        print 'final'
+        print('final')
         dump(m)
 
         if not is_board_derived(m, M):
-            print 'Error. The initial board status was overridden.'
+            print('Error. The initial board status was overridden.')
         elif not is_solved(m):
-            print 'Failed to solve.'
+            print('Failed to solve.')
         else:
-            print 'Solved!'
+            print('Solved!')
+
 
 
 def main():
@@ -403,7 +381,7 @@ def main():
     # => [ ['O','X'], ['X','O'] ]
     m = [list(l) for l in b.split('\n')]
     if not validate(m):
-        print 'Initial board status is invalid: ' + str(m)
+        print('Initial board status is invalid: ' + str(m))
         sys.exit(1)
 
     solve(m)
